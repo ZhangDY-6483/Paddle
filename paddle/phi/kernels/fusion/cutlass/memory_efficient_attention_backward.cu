@@ -15,6 +15,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
@@ -35,6 +36,8 @@
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
+
+using gemm_kernel_utils::getMaximumSharedMemoryPerBlockKb;
 
 template <typename T, typename Context>
 void MemoryEfficientAttentionBackwardKernel(
@@ -445,9 +448,9 @@ void MemoryEfficientAttentionBackwardKernel(
     VLOG(3) << "delta has been set" << delta.data();
 
     typename KernelType::Params p;
-    p.query_ptr = SafeGetTensorPtr<scalar_t>(query);
-    p.key_ptr = SafeGetTensorPtr<scalar_t>(key);
-    p.value_ptr = SafeGetTensorPtr<scalar_t>(value);
+    p.query_ptr = phi::SafeGetTensorPtr<scalar_t>(query);
+    p.key_ptr = phi::SafeGetTensorPtr<scalar_t>(key);
+    p.value_ptr = phi::SafeGetTensorPtr<scalar_t>(value);
 
     bool force_pad_inf = (compute_capacity == 75);
     const std::string data_format = "NCHW";
@@ -458,14 +461,14 @@ void MemoryEfficientAttentionBackwardKernel(
                                        32,
                                        data_format,
                                        force_pad_inf);
-    p.logsumexp_ptr = SafeGetTensorPtr<float>(padded_lse);
+    p.logsumexp_ptr = phi::SafeGetTensorPtr<float>(padded_lse);
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
-    p.output_ptr = SafeGetTensorPtr<scalar_t>(output);
-    p.grad_output_ptr = SafeGetTensorPtr<scalar_t>(output_grad);
-    p.grad_query_ptr = SafeGetTensorPtr<scalar_t>(query_grad);
-    p.grad_key_ptr = SafeGetTensorPtr<scalar_t>(key_grad);
-    p.grad_value_ptr = SafeGetTensorPtr<scalar_t>(value_grad);
-    p.delta_ptr = SafeGetTensorPtr<float>(delta);
+    p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);
+    p.grad_output_ptr = phi::SafeGetTensorPtr<scalar_t>(output_grad);
+    p.grad_query_ptr = phi::SafeGetTensorPtr<scalar_t>(query_grad);
+    p.grad_key_ptr = phi::SafeGetTensorPtr<scalar_t>(key_grad);
+    p.grad_value_ptr = phi::SafeGetTensorPtr<scalar_t>(value_grad);
+    p.delta_ptr = phi::SafeGetTensorPtr<float>(delta);
     PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
     PD_MEA_CHECK_OVERFLOW(p.head_dim_value, v_dims[3]);
 
@@ -485,8 +488,8 @@ void MemoryEfficientAttentionBackwardKernel(
     VLOG(3) << "p.scale" << p.scale;
 
     if (cu_seqlens_q) {
-      p.cu_seqlens_q_ptr = SafeGetTensorPtr<int32_t>(cu_seqlens_q);
-      p.cu_seqlens_k_ptr = SafeGetTensorPtr<int32_t>(cu_seqlens_k);
+      p.cu_seqlens_q_ptr = phi::SafeGetTensorPtr<int32_t>(cu_seqlens_q);
+      p.cu_seqlens_k_ptr = phi::SafeGetTensorPtr<int32_t>(cu_seqlens_k);
       VLOG(3) << "p.cu_seqlens_q_ptr" << p.cu_seqlens_q_ptr;
     }
 
@@ -541,7 +544,7 @@ void MemoryEfficientAttentionBackwardKernel(
     PD_MEA_CHECK_OVERFLOW(p.delta_strideB, DimStride(delta.dims(), 0));
 
     if (bias) {
-      p.bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
+      p.bias_ptr = phi::SafeGetTensorPtr<scalar_t>(bias);
       PD_MEA_CHECK_OVERFLOW(
           p.bias_strideB,
           GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims));
@@ -549,7 +552,7 @@ void MemoryEfficientAttentionBackwardKernel(
       PD_MEA_CHECK_OVERFLOW(p.bias_strideM, k_dims[1]);
       VLOG(3) << "p.bias_ptr" << p.bias_ptr;
       if (bias_grad) {
-        p.grad_bias_ptr = SafeGetTensorPtr<output_t>(bias_grad);
+        p.grad_bias_ptr = phi::SafeGetTensorPtr<output_t>(bias_grad);
         PD_MEA_CHECK_OVERFLOW(
             p.gB_strideB,
             GetMemoryEfficientBiasStrideB(bias_grad->dims(), q_dims, k_dims));
@@ -563,9 +566,9 @@ void MemoryEfficientAttentionBackwardKernel(
       p.bias_ptr = nullptr;
       p.grad_bias_ptr = nullptr;
     }
-
     if (use_dropout) {
-      int64_t* seed_and_offset_ptr = SafeGetTensorPtr<int64_t>(seed_and_offset);
+      int64_t* seed_and_offset_ptr =
+          phi::SafeGetTensorPtr<int64_t>(seed_and_offset);
       p.seed = (uint64_t)seed_and_offset_ptr[0];
       p.offset = (uint64_t)seed_and_offset_ptr[1];
       p.dropout_prob = dropout_p;
@@ -601,9 +604,9 @@ void MemoryEfficientAttentionBackwardKernel(
     }
 
     int64_t size_bytes = p.workspace_size();
-    paddle::memory::AllocationPtr temp_workspace{nullptr};
+    phi::Allocator::AllocationPtr temp_workspace{nullptr};
     VLOG(3) << "size_bytes " << size_bytes;
-    temp_workspace = paddle::memory::Alloc(
+    temp_workspace = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         size_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
