@@ -469,7 +469,7 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
       ///< iterator over B operand in global memory
       IteratorB iterator_B,
       ///< initial value of accumulator
-      FragmentC const& src_accum) {
+      FragmentC const& src_accum) {  // NOLINT
     //
     // Prologue
     //
@@ -742,7 +742,7 @@ class CustomMmaMultistage : public CustomMmaBase<Shape_, Policy_, Stages> {
     }
 
     if (SharedMemoryClear == SharedMemoryClearOption::kZfill) {
-      // commit and drain all pending and predicated LDGSTS pnz from the GEMM
+      // commit and drain all pending and predicated cp.async pnz from the GEMM
       // mainloop
       cutlass::arch::cp_async_fence();
       cutlass::arch::cp_async_wait<0>();

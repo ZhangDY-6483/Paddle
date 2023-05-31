@@ -227,6 +227,7 @@ class TestMemEffAPIDtypeFp16(TestMemEffAttentionAPI):
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 128, 128)
         self.dtype = paddle.float16
+
         self.dropout = 0.0
         self.attention_bias = None
         self.training = True

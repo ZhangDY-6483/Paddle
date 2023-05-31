@@ -1,0 +1,225 @@
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I0531 11:52:42.915233 89501 jit.cc:247] Set PyThread_tss_create return: 0
+I0531 11:52:42.915437 89501 pybind.cc:646] recurrent has no kernels, skip
+I0531 11:52:42.915446 89501 pybind.cc:646] while has no kernels, skip
+I0531 11:52:42.915467 89501 pybind.cc:646] conditional_block has no kernels, skip
+I0531 11:52:42.915481 89501 pybind.cc:646] py_func has no kernels, skip
+I0531 11:52:42.950449 89501 dynamic_loader.cc:194] Set paddle lib path : /root/paddlejob/workspace/env_run/gpt_benchmark/env/gpt_benchmark/lib/python3.7/site-packages/paddle/libs
+I0531 11:52:43.265518 89501 init.cc:96] Before Parse: argc is 2, Init commandline: dummy --tryfromenv=search_cache_max_number,cpu_deterministic,dygraph_debug,enable_cublas_tensor_op_math,graph_load_in_parallel,use_virtual_memory_auto_growth,enable_auto_detect_gpu_topo,rpc_send_thread_num,enable_unused_var_check,communicator_is_sgd_optimizer,tracer_mkldnn_ops_off,static_executor_perfstat_filepath,gpugraph_enable_hbm_table_collision_stat,conv_workspace_size_limit,use_shm_cache,get_host_by_name_time,fast_eager_deletion_mode,fraction_of_cuda_pinned_memory_to_use,gpugraph_enable_gpu_direct_access,gpugraph_storage_mode,use_fast_math,new_executor_use_cuda_graph,gpugraph_slot_feasign_max_num,rocksdb_path,host_trace_level,gpugraph_enable_segment_merge_grads,eager_delete_scope,tracer_profile_fname,gpugraph_sparse_table_storage_mode,jit_engine_type,enable_api_kernel_fallback,conv2d_disable_cudnn,enable_exit_when_partial_worker,gpugraph_merge_grads_segment_size,allreduce_record_one_event,gpu_memory_limit_mb,enable_auto_rdma_trans,cublaslt_exhaustive_search_times,check_nan_inf,nccl_blocking_wait,enable_opt_get_features,fraction_of_cpu_memory_to_use,initial_gpu_memory_in_mb,free_when_no_cache_hit,fuse_parameter_memory_size,trt_ibuilder_cache,graph_get_neighbor_id,embedding_deterministic,gpugraph_dedup_pull_push_mode,inner_op_parallelism,convert_all_blocks,reader_queue_speed_test_mode,use_mkldnn,check_kernel_launch,enable_all2all_use_fp16,check_nan_inf_level,use_pinned_memory,new_executor_sequential_run,new_executor_serial_run,gemm_use_half_precision_compute_type,use_cuda_managed_memory,npu_storage_format,new_executor_static_build,new_executor_use_local_scope,sort_sum_gradient,enable_sparse_inner_gather,low_precision_op_list,add_dependency_for_communication_op,initial_cpu_memory_in_mb,communicator_send_queue_size,set_to_1d,init_allocated_mem,run_kp_kernel,allocator_strategy,print_sub_graph_dir,cudnn_deterministic,enable_gpu_memory_usage_log,pe_profile_fname,fraction_of_gpu_memory_to_use,gpugraph_load_node_list_into_hbm,fuse_parameter_groups_size,max_inplace_grad_add,new_executor_log_memory_stats,prim_enabled,auto_growth_chunk_size_in_mb,einsum_opt,enable_gpu_memory_usage_log_mb,free_idle_chunk,communicator_max_merge_var_num,memory_fraction_of_eager_deletion,cudnn_exhaustive_search,apply_pass_to_program,multiple_of_cupti_buffer_size,cudnn_batchnorm_spatial_persistent,local_exe_sub_scope_limit,graph_metapath_split_opt,tracer_mkldnn_ops_on,cudnn_exhaustive_search_times,enable_rpc_profiler,gpugraph_hbm_table_load_factor,use_autotune,paddle_num_threads,cache_inference_while_scope,selected_gpus,fleet_executor_with_standalone,gpu_allocator_retry_time,new_executor_use_inplace,sync_nccl_allreduce,benchmark,tensor_operants_mode,enable_tracker_all2all,call_stack_level,dist_threadpool_size,use_stream_safe_cuda_allocator,gpugraph_debug_gpu_memory,reallocate_gpu_memory_in_mb,eager_delete_tensor_gb,use_system_allocator 
+I0531 11:52:43.265726 89501 init.cc:104] After Parse: argc is 1
+I0531 11:52:43.265770 89501 os_info.cc:117] SetCurrentThreadName MainThread
+I0531 11:52:44.324520 89501 pybind.cc:1903] Initialize tensor operants successfully
+I0531 11:52:44.377713 89501 amp_auto_cast.cc:104] elementwise_mul_grad 21
+I0531 11:52:44.377763 89501 amp_auto_cast.cc:104] elementwise_mul_grad 22
+I0531 11:52:44.377772 89501 amp_auto_cast.cc:104] elementwise_mul_triple_grad 22
+I0531 11:52:44.377781 89501 amp_auto_cast.cc:104] index_select_grad 23
+I0531 11:52:44.377787 89501 amp_auto_cast.cc:104] bicubic_interp_v2 24
+I0531 11:52:44.377811 89501 amp_auto_cast.cc:104] split 25
+I0531 11:52:44.377815 89501 amp_auto_cast.cc:104] split 26
+I0531 11:52:44.377832 89501 amp_auto_cast.cc:104] exp_grad 26
+I0531 11:52:44.377859 89501 amp_auto_cast.cc:104] transfer_layout 27
+I0531 11:52:44.377873 89501 amp_auto_cast.cc:104] fused_softplus 28
+I0531 11:52:44.377883 89501 amp_auto_cast.cc:104] softplus 29
+I0531 11:52:44.377887 89501 amp_auto_cast.cc:104] depthwise_conv2d 30
+I0531 11:52:44.377898 89501 amp_auto_cast.cc:104] pool2d_grad 31
+I0531 11:52:44.377905 89501 amp_auto_cast.cc:104] exp 32
+I0531 11:52:44.377919 89501 amp_auto_cast.cc:104] lookup_table_v2 33
+I0531 11:52:44.377929 89501 amp_auto_cast.cc:104] clip_grad 34
+I0531 11:52:44.377933 89501 amp_auto_cast.cc:104] memcpy_h2d 35
+I0531 11:52:44.377939 89501 amp_auto_cast.cc:104] where_index 36
+I0531 11:52:44.377947 89501 amp_auto_cast.cc:104] prelu 37
+I0531 11:52:44.377959 89501 amp_auto_cast.cc:104] load_combine 38
+I0531 11:52:44.377964 89501 amp_auto_cast.cc:104] fetch_v2 39
+I0531 11:52:44.377970 89501 amp_auto_cast.cc:104] relu6 40
+I0531 11:52:44.377974 89501 amp_auto_cast.cc:104] reshape2_grad_grad 41
+I0531 11:52:44.377979 89501 amp_auto_cast.cc:104] elementwise_sub_grad_grad 42
+I0531 11:52:44.377983 89501 amp_auto_cast.cc:104] strided_slice_grad 43
+I0531 11:52:44.377990 89501 amp_auto_cast.cc:104] fused_conv2d 44
+I0531 11:52:44.377993 89501 amp_auto_cast.cc:104] uniform_random 45
+I0531 11:52:44.377996 89501 amp_auto_cast.cc:104] reduce_max 46
+I0531 11:52:44.378010 89501 amp_auto_cast.cc:104] not_equal 47
+I0531 11:52:44.378015 89501 amp_auto_cast.cc:104] uniform_random_batch_size_like 48
+I0531 11:52:44.378022 89501 amp_auto_cast.cc:104] elementwise_sub_grad 49
+I0531 11:52:44.378026 89501 amp_auto_cast.cc:104] elementwise_sub_grad 50
+I0531 11:52:44.378029 89501 amp_auto_cast.cc:104] elementwise_min 50
+I0531 11:52:44.378037 89501 amp_auto_cast.cc:104] matmul_v2 51
+I0531 11:52:44.378043 89501 amp_auto_cast.cc:104] fill_constant 52
+I0531 11:52:44.378052 89501 amp_auto_cast.cc:104] fused_elementwise_sub 53
+I0531 11:52:44.378072 89501 amp_auto_cast.cc:104] fill_any 54
+I0531 11:52:44.378075 89501 amp_auto_cast.cc:104] concat 55
+I0531 11:52:44.378078 89501 amp_auto_cast.cc:104] concat 56
+I0531 11:52:44.378083 89501 amp_auto_cast.cc:104] squeeze2 56
+I0531 11:52:44.378086 89501 amp_auto_cast.cc:104] squeeze2 57
+I0531 11:52:44.378089 89501 amp_auto_cast.cc:104] elementwise_div_grad 57
+I0531 11:52:44.378096 89501 amp_auto_cast.cc:104] unsqueeze2_grad 58
+I0531 11:52:44.378100 89501 amp_auto_cast.cc:104] reshape2 59
+I0531 11:52:44.378103 89501 amp_auto_cast.cc:104] reshape2 60
+I0531 11:52:44.378108 89501 amp_auto_cast.cc:104] elementwise_sub 60
+I0531 11:52:44.378111 89501 amp_auto_cast.cc:104] elementwise_sub 61
+I0531 11:52:44.378121 89501 amp_auto_cast.cc:104] squeeze2_grad 61
+I0531 11:52:44.378124 89501 amp_auto_cast.cc:104] squeeze2_grad 62
+I0531 11:52:44.378134 89501 amp_auto_cast.cc:104] empty 62
+I0531 11:52:44.378139 89501 amp_auto_cast.cc:104] pool2d 63
+I0531 11:52:44.378146 89501 amp_auto_cast.cc:104] stack 64
+I0531 11:52:44.378152 89501 amp_auto_cast.cc:104] elementwise_mul 65
+I0531 11:52:44.378155 89501 amp_auto_cast.cc:104] elementwise_mul 66
+I0531 11:52:44.378165 89501 amp_auto_cast.cc:104] abs_grad 66
+I0531 11:52:44.378171 89501 amp_auto_cast.cc:104] lookup_table_v2_grad 67
+I0531 11:52:44.378185 89501 amp_auto_cast.cc:104] isinf_v2 68
+I0531 11:52:44.378196 89501 amp_auto_cast.cc:104] swish_grad 69
+I0531 11:52:44.378198 89501 amp_auto_cast.cc:104] flatten_contiguous_range_grad 70
+I0531 11:52:44.378207 89501 amp_auto_cast.cc:104] lookup_table_v2_grad 71
+I0531 11:52:44.378226 89501 amp_auto_cast.cc:104] elementwise_pow_grad 71
+I0531 11:52:44.378229 89501 amp_auto_cast.cc:104] expand_v2_grad 72
+I0531 11:52:44.378232 89501 amp_auto_cast.cc:104] sqrt 73
+I0531 11:52:44.378240 89501 amp_auto_cast.cc:104] share_buffer 74
+I0531 11:52:44.378244 89501 amp_auto_cast.cc:104] fused_matmul 75
+I0531 11:52:44.378249 89501 amp_auto_cast.cc:104] sum 76
+I0531 11:52:44.378252 89501 amp_auto_cast.cc:104] sum 77
+I0531 11:52:44.378264 89501 amp_auto_cast.cc:104] unbind 77
+I0531 11:52:44.378268 89501 amp_auto_cast.cc:104] tanh_grad 78
+I0531 11:52:44.378273 89501 amp_auto_cast.cc:104] dropout 79
+I0531 11:52:44.378276 89501 amp_auto_cast.cc:104] greater_than 80
+I0531 11:52:44.378281 89501 amp_auto_cast.cc:104] reduce_min 81
+I0531 11:52:44.378288 89501 amp_auto_cast.cc:104] conv2d 82
+I0531 11:52:44.378295 89501 amp_auto_cast.cc:104] linear_interp_v2 83
+I0531 11:52:44.378300 89501 amp_auto_cast.cc:104] conv2d_grad 84
+I0531 11:52:44.378310 89501 amp_auto_cast.cc:104] dropout_grad 85
+I0531 11:52:44.378316 89501 amp_auto_cast.cc:104] elementwise_max 86
+I0531 11:52:44.378329 89501 amp_auto_cast.cc:104] greater_equal 87
+I0531 11:52:44.378336 89501 amp_auto_cast.cc:104] relu_grad 88
+I0531 11:52:44.378341 89501 amp_auto_cast.cc:104] bilinear_interp_v2 89
+I0531 11:52:44.378345 89501 amp_auto_cast.cc:104] bilinear_interp_v2 90
+I0531 11:52:44.378348 89501 amp_auto_cast.cc:104] lookup_table_v2_grad 90
+I0531 11:52:44.378351 89501 amp_auto_cast.cc:104] sigmoid 90
+I0531 11:52:44.378356 89501 amp_auto_cast.cc:104] linear_interp_v2_grad 91
+I0531 11:52:44.378363 89501 amp_auto_cast.cc:104] nearest_interp_v2_grad 92
+I0531 11:52:44.378376 89501 amp_auto_cast.cc:104] matmul_v2_grad 93
+I0531 11:52:44.378381 89501 amp_auto_cast.cc:104] mul 94
+I0531 11:52:44.378387 89501 amp_auto_cast.cc:104] gelu 95
+I0531 11:52:44.378394 89501 amp_auto_cast.cc:104] sigmoid_grad 96
+I0531 11:52:44.378397 89501 amp_auto_cast.cc:104] transpose2_grad 97
+I0531 11:52:44.378402 89501 amp_auto_cast.cc:104] elementwise_div 98
+I0531 11:52:44.378405 89501 amp_auto_cast.cc:104] prelu_grad 99
+I0531 11:52:44.378412 89501 amp_auto_cast.cc:104] bicubic_interp_v2_grad 100
+I0531 11:52:44.378419 89501 amp_auto_cast.cc:104] strided_slice 101
+I0531 11:52:44.378425 89501 amp_auto_cast.cc:104] save 102
+I0531 11:52:44.378430 89501 amp_auto_cast.cc:104] hard_swish_grad 103
+I0531 11:52:44.378453 89501 amp_auto_cast.cc:104] pad3d 104
+I0531 11:52:44.378458 89501 amp_auto_cast.cc:104] mish 105
+I0531 11:52:44.378460 89501 amp_auto_cast.cc:104] flatten_contiguous_range 106
+I0531 11:52:44.378489 89501 amp_auto_cast.cc:104] elementwise_max_grad 107
+I0531 11:52:44.378499 89501 amp_auto_cast.cc:104] expand_v2 108
+I0531 11:52:44.378506 89501 amp_auto_cast.cc:104] size 109
+I0531 11:52:44.378512 89501 amp_auto_cast.cc:104] memcpy 110
+I0531 11:52:44.378518 89501 amp_auto_cast.cc:104] shape 111
+I0531 11:52:44.378528 89501 amp_auto_cast.cc:104] isfinite_v2 112
+I0531 11:52:44.378532 89501 amp_auto_cast.cc:104] equal 113
+I0531 11:52:44.378541 89501 amp_auto_cast.cc:104] less_equal 114
+I0531 11:52:44.378548 89501 amp_auto_cast.cc:104] depthwise_conv2d_grad 115
+I0531 11:52:44.378552 89501 amp_auto_cast.cc:104] feed 116
+I0531 11:52:44.378558 89501 amp_auto_cast.cc:104] isnan_v2 117
+I0531 11:52:44.378563 89501 amp_auto_cast.cc:104] concat_grad 118
+I0531 11:52:44.378574 89501 amp_auto_cast.cc:104] elu_grad 119
+I0531 11:52:44.378578 89501 amp_auto_cast.cc:104] reduce_sum_grad 120
+I0531 11:52:44.378584 89501 amp_auto_cast.cc:104] scale 121
+I0531 11:52:44.378588 89501 amp_auto_cast.cc:104] scale 122
+I0531 11:52:44.378593 89501 amp_auto_cast.cc:104] leaky_relu 122
+I0531 11:52:44.378598 89501 amp_auto_cast.cc:104] elementwise_pow 123
+I0531 11:52:44.378604 89501 amp_auto_cast.cc:104] elementwise_add_grad 124
+I0531 11:52:44.378612 89501 amp_auto_cast.cc:104] pad 125
+I0531 11:52:44.378618 89501 amp_auto_cast.cc:104] reshape2_grad 126
+I0531 11:52:44.378630 89501 amp_auto_cast.cc:104] trilinear_interp_v2_grad 126
+I0531 11:52:44.378634 89501 amp_auto_cast.cc:104] slice 127
+I0531 11:52:44.378638 89501 amp_auto_cast.cc:104] slice 128
+I0531 11:52:44.378641 89501 amp_auto_cast.cc:104] dequantize 128
+I0531 11:52:44.378645 89501 amp_auto_cast.cc:104] fill_any_like 129
+I0531 11:52:44.378651 89501 amp_auto_cast.cc:104] elementwise_add 130
+I0531 11:52:44.378659 89501 amp_auto_cast.cc:104] mean_grad 131
+I0531 11:52:44.378662 89501 amp_auto_cast.cc:104] fused_elementwise_div 132
+I0531 11:52:44.378669 89501 amp_auto_cast.cc:104] lookup_table_v2_grad 133
+I0531 11:52:44.378679 89501 amp_auto_cast.cc:104] bilinear_interp_v2_grad 133
+I0531 11:52:44.378695 89501 amp_auto_cast.cc:104] tanh 134
+I0531 11:52:44.378698 89501 amp_auto_cast.cc:104] less_than 135
+I0531 11:52:44.378702 89501 amp_auto_cast.cc:104] gelu_grad 136
+I0531 11:52:44.378707 89501 amp_auto_cast.cc:104] unsqueeze2 137
+I0531 11:52:44.378715 89501 amp_auto_cast.cc:104] log_softmax 138
+I0531 11:52:44.378718 89501 amp_auto_cast.cc:104] transfer_dtype 139
+I0531 11:52:44.378721 89501 amp_auto_cast.cc:104] transfer_dtype 140
+I0531 11:52:44.378724 89501 amp_auto_cast.cc:104] mish_grad 140
+I0531 11:52:44.378738 89501 amp_auto_cast.cc:104] mul_grad 141
+I0531 11:52:44.378741 89501 amp_auto_cast.cc:104] fill_any_grad 142
+I0531 11:52:44.378747 89501 amp_auto_cast.cc:104] elementwise_mul_grad_grad 143
+I0531 11:52:44.378752 89501 amp_auto_cast.cc:104] trilinear_interp_v2 144
+I0531 11:52:44.378756 89501 amp_auto_cast.cc:104] sqrt_grad 145
+I0531 11:52:44.378765 89501 amp_auto_cast.cc:104] sgd 146
+I0531 11:52:44.378768 89501 amp_auto_cast.cc:104] sgd 147
+I0531 11:52:44.378773 89501 amp_auto_cast.cc:104] fused_transpose 147
+I0531 11:52:44.378777 89501 amp_auto_cast.cc:104] clip 148
+I0531 11:52:44.378782 89501 amp_auto_cast.cc:104] conv2d_transpose 149
+I0531 11:52:44.378784 89501 amp_auto_cast.cc:104] memcpy_d2h 150
+I0531 11:52:44.378793 89501 amp_auto_cast.cc:104] mean 151
+I0531 11:52:44.378796 89501 amp_auto_cast.cc:104] transpose2 152
+I0531 11:52:44.378799 89501 amp_auto_cast.cc:104] transpose2 153
+I0531 11:52:44.378808 89501 amp_auto_cast.cc:104] abs 153
+I0531 11:52:44.378813 89501 amp_auto_cast.cc:104] elu 154
+I0531 11:52:44.378816 89501 amp_auto_cast.cc:104] index_select 155
+I0531 11:52:44.378827 89501 amp_auto_cast.cc:104] stack_grad 156
+I0531 11:52:44.378830 89501 amp_auto_cast.cc:104] slice_grad 157
+I0531 11:52:44.378834 89501 amp_auto_cast.cc:104] slice_grad 158
+I0531 11:52:44.378839 89501 amp_auto_cast.cc:104] reduce_sum 158
+I0531 11:52:44.378844 89501 amp_auto_cast.cc:104] save_combine 159
+I0531 11:52:44.378849 89501 amp_auto_cast.cc:104] leaky_relu_grad 160
+I0531 11:52:44.378856 89501 amp_auto_cast.cc:104] reduce_mean 161
+I0531 11:52:44.378860 89501 amp_auto_cast.cc:104] assign 162
+I0531 11:52:44.378870 89501 amp_auto_cast.cc:104] gather_grad 163
+I0531 11:52:44.378875 89501 amp_auto_cast.cc:104] reduce_mean_grad 164
+I0531 11:52:44.378880 89501 amp_auto_cast.cc:104] relu 165
+I0531 11:52:44.378883 89501 amp_auto_cast.cc:104] hard_swish 166
+I0531 11:52:44.378894 89501 amp_auto_cast.cc:104] swish 167
+I0531 11:52:44.378898 89501 amp_auto_cast.cc:104] fused_elementwise_mul 168
+I0531 11:52:44.378906 89501 amp_auto_cast.cc:104] nearest_interp_v2 169
+I0531 11:52:44.378909 89501 amp_auto_cast.cc:104] nearest_interp_v2 170
+I0531 11:52:44.378913 89501 amp_auto_cast.cc:104] gather 170
+I0531 11:52:44.378917 89501 amp_auto_cast.cc:104] elementwise_min_grad 171
+I0531 11:52:44.378921 89501 amp_auto_cast.cc:104] pad_grad 172
+I0531 11:52:44.378926 89501 amp_auto_cast.cc:104] softmax 173
+I0531 11:52:44.378937 89501 amp_auto_cast.cc:104] fused_elementwise_add 174
+I0531 11:52:44.378942 89501 amp_auto_cast.cc:104] relu6_grad 175
+I0531 11:52:44.379237 89501 amp_auto_cast.cc:117] -- The size of all_ops: 1226 --
+I0531 11:52:44.379241 89501 amp_auto_cast.cc:118] -- The size of supported_ops: 176 --
+I0531 11:52:44.379245 89501 amp_auto_cast.cc:119] -- The size of unsupported_ops: 1050 --
+I0531 11:52:44.607977 89501 global_utils.h:97] Set current tracer for Controller: 0x5d82cb0
+I0531 11:52:44.608021 89501 tracer.cc:61] Set current tracer: 0x5d82cb0
+I0531 11:52:44.608053 89501 imperative.cc:2182] Tracer(0x5d82cb0) set expected place Place(gpu:0)
+I0531 11:52:44.612375 89501 generator.cc:212] initial seed: 336557201121631, cpu engine: 0x79dddf8
+I0531 11:52:44.612406 89501 generator.cc:86] initial seed: 336557201121631
+I0531 11:52:44.612442 89501 generator.cc:212] initial seed: 5734657593553929, cpu engine: 0x79df208
+I0531 11:52:44.612443 89501 generator.cc:86] initial seed: 5734657593553929
+I0531 11:52:44.612471 89501 generator.cc:212] initial seed: 75779961550409, cpu engine: 0x79e0618
+I0531 11:52:44.612486 89501 generator.cc:86] initial seed: 75779961550409
+I0531 11:52:44.612507 89501 generator.cc:212] initial seed: 682616709389738, cpu engine: 0x79e1a28
+I0531 11:52:44.612509 89501 generator.cc:86] initial seed: 682616709389738
+I0531 11:52:44.612531 89501 generator.cc:212] initial seed: 1464593165701097, cpu engine: 0x79e2e38
+I0531 11:52:44.612533 89501 generator.cc:86] initial seed: 1464593165701097
+I0531 11:52:44.612553 89501 generator.cc:212] initial seed: 1155874780462483, cpu engine: 0x79e4248
+I0531 11:52:44.612556 89501 generator.cc:86] initial seed: 1155874780462483
+I0531 11:52:44.612576 89501 generator.cc:212] initial seed: 1126460561778276, cpu engine: 0x79e5658
+I0531 11:52:44.612578 89501 generator.cc:86] initial seed: 1126460561778276
+I0531 11:52:44.612598 89501 generator.cc:212] initial seed: 786945703284585, cpu engine: 0x79e6a68
+I0531 11:52:44.612601 89501 generator.cc:86] initial seed: 786945703284585
+I0531 11:52:44.612628 89501 generator.cc:200] initial seed: 1958243748943847, cpu engine: 0x79e7e78
+E
+======================================================================
+ERROR: 2 (unittest.loader._FailedTest)
+----------------------------------------------------------------------
+AttributeError: module '__main__' has no attribute '2'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+I0531 11:52:44.627905 89501 imperative.cc:2182] Tracer(0x5d82cb0) set expected place Place(gpu:0)
+I0531 11:52:44.628021 89501 mmap_allocator.cc:321] PID: 89501, MemoryMapFdSet: set size - 0
+I0531 11:52:44.634542 89501 mmap_allocator.cc:321] PID: 89501, MemoryMapFdSet: set size - 0
+I0531 11:52:44.835842 89501 mmap_allocator.cc:321] PID: 89501, MemoryMapFdSet: set size - 0

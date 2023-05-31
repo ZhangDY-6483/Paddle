@@ -72,7 +72,7 @@ namespace thread {
 //     alpha = 1 / s_prime (to normalize when isLast=True, 1 otherwise)
 //     beta = alpha / m_prime (renormalize the output when the max changes)
 //     source is the current output
-template <typename ElementOutput_,  /// < Data type used to store tensors
+template <typename ElementOutput_,  ///< Data type used to store tensors
           typename ElementSource_,  // < Data type for source (usually matches
                                     // `ElementOutput`)
           int Count,  ///< Number of elements computed per operation.

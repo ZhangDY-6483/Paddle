@@ -189,7 +189,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
   Mask residual_tile_mask;
 
   /// Parameters object with precomputed internal state
-  Params const& params_;
+  Params params_;
 
   /// Internal pointer to first access of tile
   BytePointer pointer_;
@@ -363,7 +363,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 
     ++the_predicates.iteration_vector_;
     if (the_predicates.iteration_vector_ < kAccessesPerVector) {
-      return *this;  // NOLINT
+      return *this;
     }
 
     the_predicates.iteration_vector_ = 0;
@@ -508,8 +508,8 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 
     /// Construct the Params object given a pitch-linear tensor's layout
     CUTLASS_HOST_DEVICE
-    Params(Layout const& layout)                             // NOLINT
-        : params_(layout::PitchLinear(layout.stride(0))){};  // NOLINT
+    Params(Layout const& layout)  // NOLINT
+        : params_(layout::PitchLinear(layout.stride(0))) {}
 
     /// Construct the Params object given a pitch-linear tensor's layout
     CUTLASS_HOST_DEVICE
@@ -711,8 +711,8 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 
     /// Construct the Params object given a pitch-linear tensor's layout
     CUTLASS_HOST_DEVICE
-    Params(Layout const& layout)                             // NOLINT
-        : params_(layout::PitchLinear(layout.stride(0))){};  // NOLINT
+    Params(Layout const& layout)  // NOLINT
+        : params_(layout::PitchLinear(layout.stride(0))) {}
 
     /// Construct the Params object given a pitch-linear tensor's layout
     CUTLASS_HOST_DEVICE
@@ -963,7 +963,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
           inc_advance_ -
           LongIndex(ThreadMap::Iterations::kContiguous - 1) * inc_contiguous_ -
           LongIndex(ThreadMap::Iterations::kStrided - 1) * inc_strided_;
-    };  // NOLINT
+    }
   };
 
  private:
@@ -975,7 +975,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
   //
 
   /// Parameters object with precomputed internal state
-  Params const& params_;
+  Params params_;
 
   /// Internal pointer to first access of tile
   BytePointer pointer_;
@@ -1232,8 +1232,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
     /// Construct the Params object given an AffineRankN<2> tensor's layout
     CUTLASS_HOST_DEVICE
     Params(Layout const& layout)  // NOLINT
-        : params_(layout::AffineRankN<2>(layout.stride(0),
-                                         layout.stride(1))){};  // NOLINT
+        : params_(layout::AffineRankN<2>(layout.stride(0), layout.stride(1))) {}
   };
 
  private:
@@ -1430,8 +1429,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
     /// Construct the Params object given an AffineRankN<2> tensor's layout
     CUTLASS_HOST_DEVICE
     Params(Layout const& layout)  // NOLINT
-        : params_(layout::AffineRankN<2>(layout.stride(1),
-                                         layout.stride(0))){};  // NOLINT
+        : params_(layout::AffineRankN<2>(layout.stride(1), layout.stride(0))) {}
   };
 
  private:

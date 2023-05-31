@@ -366,8 +366,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
   void get_mask(Mask& mask) { address_iterator_.get_mask(mask); }  // NOLINT
 
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     load_with_byte_offset(frag,
                           pointer_offset * sizeof_bits<Element>::value / 8);
   }
@@ -390,7 +390,7 @@ class PredicatedTileIteratorResidualLast<Shape_,
               reinterpret_cast<char const*>(address_iterator_.get()) +
               byte_offset;
 
-          AccessType const* access_ptr =  // NOLINT
+          AccessType const* access_ptr =
               reinterpret_cast<AccessType const*>(byte_ptr);
 
           cutlass::arch::global_load<AccessType, sizeof(AccessType)>(
@@ -625,8 +625,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
 
   /// Loads a fragment from memory
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     iterator_.load_with_pointer_offset(frag, pointer_offset);
   }
 
@@ -834,8 +834,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
 
   /// Loads a fragment from memory
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     iterator_.load_with_pointer_offset(frag, pointer_offset);
   }
 
@@ -1055,8 +1055,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
   void get_mask(Mask& mask) { address_iterator_.get_mask(mask); }  // NOLINT
 
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     load_with_byte_offset(frag,
                           pointer_offset * sizeof_bits<Element>::value / 8);
   }
@@ -1309,8 +1309,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
 
   /// Loads a fragment from memory
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     iterator_.load_with_pointer_offset(frag, pointer_offset);
   }
 
@@ -1515,8 +1515,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
 
   /// Loads a fragment from memory
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     iterator_.load_with_pointer_offset(frag, pointer_offset);
   }
 
@@ -1736,8 +1736,8 @@ class PredicatedTileIteratorResidualLast<
 
   /// Loads a fragment from memory
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     iterator_.load_with_pointer_offset(frag, pointer_offset);
   }
 
@@ -1944,8 +1944,8 @@ class PredicatedTileIteratorResidualLast<
 
   /// Loads a fragment from memory
   CUTLASS_DEVICE
-  void load_with_pointer_offset(Fragment& frag,          // NOLINT
-                                Index pointer_offset) {  // NOLINT
+  void load_with_pointer_offset(Fragment& frag,  // NOLINT
+                                Index pointer_offset) {
     iterator_.load_with_pointer_offset(frag, pointer_offset);
   }
 

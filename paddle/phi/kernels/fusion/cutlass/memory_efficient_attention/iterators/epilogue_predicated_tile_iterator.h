@@ -348,8 +348,8 @@ class PredicatedTileIteratorPrefetch {
 
   /// Loads a fragment from memory
   CUTLASS_DEVICE
-  void load_with_byte_offset(Fragment& frag,               // NOLINT
-                             int64_t byte_offset) const {  // NOLINT
+  void load_with_byte_offset(Fragment& frag,  // NOLINT
+                             int64_t byte_offset) const {
     uint8_t* byte_pointer = byte_pointer_;
     AccessType* frag_ptr = reinterpret_cast<AccessType*>(&frag);
 
@@ -390,9 +390,9 @@ class PredicatedTileIteratorPrefetch {
             cutlass::arch::global_load<AccessType, sizeof(AccessType)>(
                 frag_ptr[frag_row_idx * ThreadMap::Iterations::kColumn +
                          column],
-                (void*)&memory_pointer[column *                     // NOLINT
-                                       ThreadMap::Delta::kColumn /  // NOLINT
-                                       kElementsPerAccess],
+                reinterpret_cast<void*>(
+                    &memory_pointer[column * ThreadMap::Delta::kColumn /
+                                    kElementsPerAccess]),
                 guard);
           }
 
@@ -469,9 +469,9 @@ class PredicatedTileIteratorPrefetch {
               cutlass::arch::global_store<AccessType, sizeof(AccessType)>(
                   frag_ptr[frag_row_idx * ThreadMap::Iterations::kColumn +
                            column],
-                  (void*)&memory_pointer[column *                     // NOLINT
-                                         ThreadMap::Delta::kColumn /  // NOLINT
-                                         kElementsPerAccess],
+                  reinterpret_cast<void*>(
+                      &memory_pointer[column * ThreadMap::Delta::kColumn /
+                                      kElementsPerAccess]),
                   guard);
             }
           }
@@ -551,9 +551,9 @@ class PredicatedTileIteratorPrefetch {
             cutlass::arch::global_load<AccessType, sizeof(AccessType)>(
                 frag_ptr[frag_row_idx * ThreadMap::Iterations::kColumn +
                          column],
-                (void*)&memory_pointer[column *                     // NOLINT
-                                       ThreadMap::Delta::kColumn /  // NOLINT
-                                       kElementsPerAccess],
+                reinterpret_cast<void*>(
+                    &memory_pointer[column * ThreadMap::Delta::kColumn /
+                                    kElementsPerAccess]),
                 guard);
           }
 
@@ -630,9 +630,9 @@ class PredicatedTileIteratorPrefetch {
             cutlass::arch::global_load<AccessType, sizeof(AccessType)>(
                 frag_ptr[frag_row_idx * ThreadMap::Iterations::kColumn +
                          column],
-                (void*)&memory_pointer[column *                     // NOLINT
-                                       ThreadMap::Delta::kColumn /  // NOLINT
-                                       kElementsPerAccess],
+                reinterpret_cast<void*>(
+                    &memory_pointer[column * ThreadMap::Delta::kColumn /
+                                    kElementsPerAccess]),
                 guard);
           }
 

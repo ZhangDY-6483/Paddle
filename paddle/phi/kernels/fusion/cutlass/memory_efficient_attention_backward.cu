@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -28,6 +29,7 @@
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+#include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -49,249 +51,300 @@ void MemoryEfficientAttentionBackwardKernel(
     const DenseTensor& output_grad,
     const Scalar& max_seqlen_q,
     const Scalar& max_seqlen_k,
-    const bool causal,
+    const Scalar& num_splits_key,
+    const int custom_mask_type,
     const double dropout_p,
     const float scale,
     DenseTensor* query_grad,
     DenseTensor* key_grad,
     DenseTensor* value_grad,
     DenseTensor* bias_grad) {
+  const auto& k_dims = key.dims();
+  const auto& q_dims = query.dims();
+  const auto& v_dims = value.dims();
+
+  // ndim
+  PADDLE_ENFORCE_EQ(query.dims().size(),
+                    output_grad.dims().size(),
+                    paddle::platform::errors::InvalidArgument(
+                        "The size of query's dimensions "
+                        "should be euqal to output grad. But received query's "
+                        "dimensions = %d, output grad's dimensions = %d.",
+                        query.dims().size(),
+                        output_grad.dims().size()));
+  PADDLE_ENFORCE_EQ(query.dims().size(),
+                    key.dims().size(),
+                    paddle::platform::errors::InvalidArgument(
+                        "The size of query's dimensions "
+                        "should be euqal to key. But received query's "
+                        "dimensions = %d, key's dimensions = %d.",
+                        query.dims().size(),
+                        key.dims().size()));
+  PADDLE_ENFORCE_EQ(query.dims().size(),
+                    value.dims().size(),
+                    paddle::platform::errors::InvalidArgument(
+                        "The size of query's dimensions "
+                        "should be euqal to value. But received query's "
+                        "dimensions = %d, value's dimensions = %d.",
+                        query.dims().size(),
+                        key.dims().size()));
+  PADDLE_ENFORCE_EQ(query.dims().size(),
+                    4,
+                    paddle::platform::errors::InvalidArgument(
+                        "The size of query's dimensions "
+                        "dim size of query is illegal. Expected dimension "
+                        "size=4. Received %d.",
+                        query.dims().size()));
+
+  // batch size
+  PADDLE_ENFORCE_EQ(query.dims()[0],
+                    output_grad.dims()[0],
+                    paddle::platform::errors::InvalidArgument(
+                        "The batch size of query's dimensions "
+                        "should be euqal to output grad. But received query's "
+                        "batch size = %d, output grad's batch size = %d.",
+                        query.dims()[0],
+                        output_grad.dims()[0]));
+  PADDLE_ENFORCE_EQ(query.dims()[0],
+                    key.dims()[0],
+                    paddle::platform::errors::InvalidArgument(
+                        "The batch size of query's dimensions "
+                        "should be euqal to key. But received query's "
+                        "batch size = %d, key's batch size = %d.",
+                        query.dims()[0],
+                        key.dims()[0]));
+  PADDLE_ENFORCE_EQ(query.dims()[0],
+                    value.dims()[0],
+                    paddle::platform::errors::InvalidArgument(
+                        "The batch size of query's dimensions "
+                        "should be euqal to value. But received query's "
+                        "batch size = %d, value's batch size = %d.",
+                        query.dims()[0],
+                        value.dims()[0]));
+
+  // seqlen
+  PADDLE_ENFORCE_EQ(
+      key.dims()[1],
+      value.dims()[1],
+      paddle::platform::errors::InvalidArgument(
+          "The sequence length of key"
+          "should be euqal to value. But received key's sequence length = "
+          "%d, value's sequence length = %d.",
+          key.dims()[1],
+          value.dims()[1]));
+  PADDLE_ENFORCE_EQ(query.dims()[1],
+                    output_grad.dims()[1],
+                    paddle::platform::errors::InvalidArgument(
+                        "The sequence length of query"
+                        "should be euqal to output grad. But received "
+                        "query's sequence length = "
+                        "%d, output grad's sequence length = %d.",
+                        query.dims()[1],
+                        output_grad.dims()[1]));
+
+  // Num heads
+  PADDLE_ENFORCE_EQ(
+      query.dims()[2],
+      key.dims()[2],
+      paddle::platform::errors::InvalidArgument(
+          "The head number of query"
+          "should be euqal to key. But received query's head number = "
+          "%d, key's head number = %d.",
+          query.dims()[2],
+          key.dims()[2]));
+  PADDLE_ENFORCE_EQ(
+      query.dims()[2],
+      value.dims()[2],
+      paddle::platform::errors::InvalidArgument(
+          "The head number of query"
+          "should be euqal to value. But received query's head number = "
+          "%d, value's head number = %d.",
+          query.dims()[2],
+          value.dims()[2]));
+  PADDLE_ENFORCE_EQ(query.dims()[2],
+                    output_grad.dims()[2],
+                    paddle::platform::errors::InvalidArgument(
+                        "The head number of query"
+                        "should be euqal to output grad. But received "
+                        "query's head number = "
+                        "%d, output grad's head number = %d.",
+                        query.dims()[2],
+                        output_grad.dims()[2]));
+
+  // Embedding per head
+  PADDLE_ENFORCE_EQ(
+      query.dims()[3],
+      key.dims()[3],
+      paddle::platform::errors::InvalidArgument(
+          "The head size of query"
+          "should be euqal to key. But received query's head size = "
+          "%d, key's head size = %d.",
+          query.dims()[3],
+          key.dims()[3]));
+  PADDLE_ENFORCE_EQ(
+      value.dims()[3],
+      output_grad.dims()[3],
+      paddle::platform::errors::InvalidArgument(
+          "The head size of value"
+          "should be euqal to output grad. But received value's head size = "
+          "%d, output grad's head size = %d.",
+          value.dims()[3],
+          output_grad.dims()[3]));
+
+  if (cu_seqlens_q) {
+    PADDLE_ENFORCE_EQ((cu_seqlens_q && bias),
+                      false,
+                      paddle::platform::errors::InvalidArgument(
+                          "cu_seqlens_q or bias should be None"));
+    PADDLE_ENFORCE_EQ(
+        (cu_seqlens_k && cu_seqlens_q),
+        true,
+        paddle::platform::errors::InvalidArgument(
+            "cu_seqlens_q and cu_seqlens_k should be same condition"));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (cu_seqlens_k || cu_seqlens_q),
+        false,
+        paddle::platform::errors::InvalidArgument(
+            "cu_seqlens_q and cu_seqlens_k should be same condition"));
+  }
+  int64_t max_seqlen_q_tmp, max_seqlen_k_tmp;
+  if (cu_seqlens_q) {
+    PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dtype(),
+                      DataType::INT32,
+                      paddle::platform::errors::InvalidArgument(
+                          "data type of cu_seqlens_q should be INT32"));
+    PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dtype(),
+                      DataType::INT32,
+                      paddle::platform::errors::InvalidArgument(
+                          "data type of cu_seqlens_k should be INT32"));
+    PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dims().size(),
+                      1,
+                      paddle::platform::errors::InvalidArgument(
+                          "dims of cu_seqlens_q should be one"));
+    PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dims().size(),
+                      1,
+                      paddle::platform::errors::InvalidArgument(
+                          "dims of cu_seqlens_k should be one"));
+    max_seqlen_q_tmp = max_seqlen_q.to<int64_t>();
+    max_seqlen_k_tmp = max_seqlen_k.to<int64_t>();
+    VLOG(3) << "max_seqlen_q_tmp" << max_seqlen_q_tmp;
+    VLOG(3) << "max_seqlen_k_tmp" << max_seqlen_k_tmp;
+    PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dims()[0],
+                      cu_seqlens_k.get().dims()[0],
+                      paddle::platform::errors::InvalidArgument(
+                          "The first dimension of cu_seqlens_q"
+                          "should be euqal to cu_seqlens_q."));
+    PADDLE_ENFORCE_EQ(
+        q_dims[0],
+        1,
+        paddle::platform::errors::InvalidArgument(
+            "The batch number of query"
+            "should be one. But received batch number of query = %d.",
+            q_dims[0]));
+    PADDLE_ENFORCE_LT(0,
+                      max_seqlen_q_tmp,
+                      paddle::platform::errors::InvalidArgument(
+                          "The max sequence length of query"
+                          "should more than zero. But received the max "
+                          "sequence length of query = %d.",
+                          max_seqlen_q_tmp));
+    PADDLE_ENFORCE_LT(0,
+                      max_seqlen_k_tmp,
+                      paddle::platform::errors::InvalidArgument(
+                          "The max sequence length of key"
+                          "should more than zero. But received the max "
+                          "sequence length of key = %d.",
+                          max_seqlen_k_tmp));
+    PADDLE_ENFORCE_LE(max_seqlen_q_tmp,
+                      q_dims[1],
+                      paddle::platform::errors::InvalidArgument(
+                          "The max sequence length of query"
+                          "should larger than sequence length of query. But "
+                          "received the max sequence length of query = %d,"
+                          "the sequence length of query = %d",
+                          max_seqlen_q_tmp,
+                          q_dims[1]));
+    PADDLE_ENFORCE_LE(max_seqlen_k_tmp,
+                      k_dims[1],
+                      paddle::platform::errors::InvalidArgument(
+                          "The max sequence length of key"
+                          "should larger than sequence length of key. But "
+                          "received the max sequence length of key = %d,"
+                          "the sequence length of key = %d",
+                          max_seqlen_k_tmp,
+                          k_dims[1]));
+  } else {
+    max_seqlen_q_tmp = q_dims[1];
+    max_seqlen_k_tmp = k_dims[1];
+  }
+
+  if (q_dims[1] == k_dims[1] && q_dims[3] == v_dims[3]) {
+    // Create one big contiguous chunk
+    // This is because q, k and v usually come from a single
+    // output of a linear layer that is chunked.
+    // Creating the gradients with the right layout saves us
+    // a `torch.cat` call in the backward pass
+    DenseTensor qkv_chunk_tmp;
+    phi::EmptyKernel<T, Context>(
+        ctx,
+        {q_dims[0], q_dims[1], 3, q_dims[2], q_dims[3]},
+        DataType::FLOAT32,
+        &qkv_chunk_tmp);
+    std::vector<DenseTensor> single_chunk_tmp = qkv_chunk_tmp.Split(1, 2);
+    (*query_grad) = single_chunk_tmp[0].Resize(query.dims());
+    (*key_grad) = single_chunk_tmp[1].Resize(key.dims());
+    (*value_grad) = single_chunk_tmp[2].Resize(value.dims());
+  } else {
+    phi::IntArray q_shape(
+        {query.dims()[0], query.dims()[1], query.dims()[2], query.dims()[3]});
+    phi::IntArray k_shape(
+        {key.dims()[0], key.dims()[1], key.dims()[2], key.dims()[3]});
+    phi::IntArray v_shape(
+        {value.dims()[0], value.dims()[1], value.dims()[2], value.dims()[3]});
+    phi::EmptyKernel<T, Context>(ctx, q_shape, DataType::FLOAT32, query_grad);
+    phi::EmptyKernel<T, Context>(ctx, k_shape, DataType::FLOAT32, key_grad);
+    phi::EmptyKernel<T, Context>(ctx, v_shape, DataType::FLOAT32, value_grad);
+  }
+
+  if (bias) {
+    // force alignment for the last dim
+    auto sz = bias.get().dims();
+    auto lastDim = sz[sz.size() - 1];
+    auto alignTo = 16;
+    sz[sz.size() - 1] = alignTo * ((lastDim + alignTo - 1) / alignTo);
+    phi::IntArray bias_shape({sz[0], sz[1], sz[2], sz[3]});
+    DenseTensor grad_bias_tmp;
+    phi::EmptyKernel<T, Context>(
+        ctx, bias_shape, DataType::FLOAT32, &grad_bias_tmp);
+    DenseTensor bias_grad_tmp =
+        phi::Slice<T, Context>(ctx,
+                               grad_bias_tmp,                    // input
+                               {0, 1, 2, 3},                     // axis
+                               {0, 0, 0, 0},                     // starts
+                               {sz[0], sz[1], sz[2], lastDim});  // ends
+    bias_grad = &bias_grad_tmp;
+  }
+
+  auto use_dropout = dropout_p != 0.0;
+
+  int compute_capacity = ctx.GetComputeCapability();
+
   bool kernel_launched = false;
+  const auto maxK = std::max(q_dims[3], v_dims[3]);
+  const auto max_shmem =
+      getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;
 
   auto launchKernel = [&](auto k_, auto kernel_fn) {
-    // ndim
-    PADDLE_ENFORCE_EQ(
-        query.dims().size(),
-        output_grad.dims().size(),
-        paddle::platform::errors::InvalidArgument(
-            "The size of query's dimensions "
-            "should be euqal to output grad. But received query's "
-            "dimensions = %d, output grad's dimensions = %d.",
-            query.dims().size(),
-            output_grad.dims().size()));
-    PADDLE_ENFORCE_EQ(query.dims().size(),
-                      key.dims().size(),
-                      paddle::platform::errors::InvalidArgument(
-                          "The size of query's dimensions "
-                          "should be euqal to key. But received query's "
-                          "dimensions = %d, key's dimensions = %d.",
-                          query.dims().size(),
-                          key.dims().size()));
-    PADDLE_ENFORCE_EQ(query.dims().size(),
-                      value.dims().size(),
-                      paddle::platform::errors::InvalidArgument(
-                          "The size of query's dimensions "
-                          "should be euqal to value. But received query's "
-                          "dimensions = %d, value's dimensions = %d.",
-                          query.dims().size(),
-                          key.dims().size()));
-    PADDLE_ENFORCE_EQ(query.dims().size(),
-                      4,
-                      paddle::platform::errors::InvalidArgument(
-                          "The size of query's dimensions "
-                          "dim size of query is illegal. Expected dimension "
-                          "size=4. Received %d.",
-                          query.dims().size()));
-
-    // batch size
-    PADDLE_ENFORCE_EQ(
-        query.dims()[0],
-        output_grad.dims()[0],
-        paddle::platform::errors::InvalidArgument(
-            "The batch size of query's dimensions "
-            "should be euqal to output grad. But received query's "
-            "batch size = %d, output grad's batch size = %d.",
-            query.dims()[0],
-            output_grad.dims()[0]));
-    PADDLE_ENFORCE_EQ(query.dims()[0],
-                      key.dims()[0],
-                      paddle::platform::errors::InvalidArgument(
-                          "The batch size of query's dimensions "
-                          "should be euqal to key. But received query's "
-                          "batch size = %d, key's batch size = %d.",
-                          query.dims()[0],
-                          key.dims()[0]));
-    PADDLE_ENFORCE_EQ(query.dims()[0],
-                      value.dims()[0],
-                      paddle::platform::errors::InvalidArgument(
-                          "The batch size of query's dimensions "
-                          "should be euqal to value. But received query's "
-                          "batch size = %d, value's batch size = %d.",
-                          query.dims()[0],
-                          value.dims()[0]));
-
-    // seqlen
-    PADDLE_ENFORCE_EQ(
-        key.dims()[1],
-        value.dims()[1],
-        paddle::platform::errors::InvalidArgument(
-            "The sequence length of key"
-            "should be euqal to value. But received key's sequence length = "
-            "%d, value's sequence length = %d.",
-            key.dims()[1],
-            value.dims()[1]));
-    PADDLE_ENFORCE_EQ(query.dims()[1],
-                      output_grad.dims()[1],
-                      paddle::platform::errors::InvalidArgument(
-                          "The sequence length of query"
-                          "should be euqal to output grad. But received "
-                          "query's sequence length = "
-                          "%d, output grad's sequence length = %d.",
-                          query.dims()[1],
-                          output_grad.dims()[1]));
-
-    // Num heads
-    PADDLE_ENFORCE_EQ(
-        query.dims()[2],
-        key.dims()[2],
-        paddle::platform::errors::InvalidArgument(
-            "The head number of query"
-            "should be euqal to key. But received query's head number = "
-            "%d, key's head number = %d.",
-            query.dims()[2],
-            key.dims()[2]));
-    PADDLE_ENFORCE_EQ(
-        query.dims()[2],
-        value.dims()[2],
-        paddle::platform::errors::InvalidArgument(
-            "The head number of query"
-            "should be euqal to value. But received query's head number = "
-            "%d, value's head number = %d.",
-            query.dims()[2],
-            value.dims()[2]));
-    PADDLE_ENFORCE_EQ(query.dims()[2],
-                      output_grad.dims()[2],
-                      paddle::platform::errors::InvalidArgument(
-                          "The head number of query"
-                          "should be euqal to output grad. But received "
-                          "query's head number = "
-                          "%d, output grad's head number = %d.",
-                          query.dims()[2],
-                          output_grad.dims()[2]));
-
-    // Embedding per head
-    PADDLE_ENFORCE_EQ(
-        query.dims()[3],
-        key.dims()[3],
-        paddle::platform::errors::InvalidArgument(
-            "The head size of query"
-            "should be euqal to key. But received query's head size = "
-            "%d, key's head size = %d.",
-            query.dims()[3],
-            key.dims()[3]));
-    PADDLE_ENFORCE_EQ(
-        value.dims()[3],
-        output_grad.dims()[3],
-        paddle::platform::errors::InvalidArgument(
-            "The head size of value"
-            "should be euqal to output grad. But received value's head size = "
-            "%d, output grad's head size = %d.",
-            value.dims()[3],
-            output_grad.dims()[3]));
-
-    if (cu_seqlens_q) {
-      PADDLE_ENFORCE_EQ((cu_seqlens_q && bias),
-                        false,
-                        paddle::platform::errors::InvalidArgument(
-                            "cu_seqlens_q or bias should be None"));
-      PADDLE_ENFORCE_EQ(
-          (cu_seqlens_k && cu_seqlens_q),
-          true,
-          paddle::platform::errors::InvalidArgument(
-              "cu_seqlens_q and cu_seqlens_k should be same condition"));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          (cu_seqlens_k || cu_seqlens_q),
-          false,
-          paddle::platform::errors::InvalidArgument(
-              "cu_seqlens_q and cu_seqlens_k should be same condition"));
-    }
-
-    const auto& k_dims = key.dims();
-    const auto& q_dims = query.dims();
-    const auto& v_dims = value.dims();
+    using KernelType = decltype(k_);
+    using scalar_t = typename KernelType::scalar_t;
+    using output_t = typename KernelType::output_t;
 
     int64_t max_seqlen_q_tmp, max_seqlen_k_tmp;
-    if (cu_seqlens_q) {
-      PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dtype(),
-                        DataType::INT32,
-                        paddle::platform::errors::InvalidArgument(
-                            "data type of cu_seqlens_q should be INT32"));
-      PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dtype(),
-                        DataType::INT32,
-                        paddle::platform::errors::InvalidArgument(
-                            "data type of cu_seqlens_k should be INT32"));
-      PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dims().size(),
-                        1,
-                        paddle::platform::errors::InvalidArgument(
-                            "dims of cu_seqlens_q should be one"));
-      PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dims().size(),
-                        1,
-                        paddle::platform::errors::InvalidArgument(
-                            "dims of cu_seqlens_k should be one"));
-      max_seqlen_q_tmp = max_seqlen_q.to<int64_t>();
-      max_seqlen_k_tmp = max_seqlen_k.to<int64_t>();
-      VLOG(3) << "max_seqlen_q_tmp" << max_seqlen_q_tmp;
-      VLOG(3) << "max_seqlen_k_tmp" << max_seqlen_k_tmp;
-      PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dims()[0],
-                        cu_seqlens_k.get().dims()[0],
-                        paddle::platform::errors::InvalidArgument(
-                            "The first dimension of cu_seqlens_q"
-                            "should be euqal to cu_seqlens_q."));
-      PADDLE_ENFORCE_EQ(
-          q_dims[0],
-          1,
-          paddle::platform::errors::InvalidArgument(
-              "The batch number of query"
-              "should be one. But received batch number of query = %d.",
-              q_dims[0]));
-      PADDLE_ENFORCE_LT(0,
-                        max_seqlen_q_tmp,
-                        paddle::platform::errors::InvalidArgument(
-                            "The max sequence length of query"
-                            "should more than zero. But received the max "
-                            "sequence length of query = %d.",
-                            max_seqlen_q_tmp));
-      PADDLE_ENFORCE_LT(0,
-                        max_seqlen_k_tmp,
-                        paddle::platform::errors::InvalidArgument(
-                            "The max sequence length of key"
-                            "should more than zero. But received the max "
-                            "sequence length of key = %d.",
-                            max_seqlen_k_tmp));
-      PADDLE_ENFORCE_LE(max_seqlen_q_tmp,
-                        q_dims[1],
-                        paddle::platform::errors::InvalidArgument(
-                            "The max sequence length of query"
-                            "should larger than sequence length of query. But "
-                            "received the max sequence length of query = %d,"
-                            "the sequence length of query = %d",
-                            max_seqlen_q_tmp,
-                            q_dims[1]));
-      PADDLE_ENFORCE_LE(max_seqlen_k_tmp,
-                        k_dims[1],
-                        paddle::platform::errors::InvalidArgument(
-                            "The max sequence length of key"
-                            "should larger than sequence length of key. But "
-                            "received the max sequence length of key = %d,"
-                            "the sequence length of key = %d",
-                            max_seqlen_k_tmp,
-                            k_dims[1]));
-    } else {
-      max_seqlen_q_tmp = q_dims[1];
-      max_seqlen_k_tmp = k_dims[1];
-    }
+
     VLOG(3) << "max_seqlen_q_tmp has been set " << max_seqlen_q_tmp
             << " max_seqlen_k_tmp " << max_seqlen_k_tmp;
 
-    auto use_dropout = dropout_p != 0.0;
-    const auto maxK = std::max(q_dims[3], v_dims[3]);
-    int compute_capacity = ctx.GetComputeCapability();
-    const auto max_shmem =
-        getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;
-
-    using KernelType = decltype(k_);
-    using scalar_t = typename KernelType::scalar_t;
     if (kernel_launched) {
       return;
     }
@@ -301,6 +354,11 @@ void MemoryEfficientAttentionBackwardKernel(
     }
     // Dropout must be supported if we need it
     if (use_dropout && !KernelType::kApplyDropout) {
+      return;
+    }
+    if (KernelType::kKeysQueriesAlignedToBlockSize &&
+        (cu_seqlens_q || query.dims()[1] % KernelType::kBlockSizeI ||
+         key.dims()[1] % KernelType::kBlockSizeJ)) {
       return;
     }
     // Alignment
@@ -321,7 +379,7 @@ void MemoryEfficientAttentionBackwardKernel(
 
     DenseTensor delta;
     if (KernelType::kKernelComputesDelta) {
-      phi::EmptyKernel<float, Context>(
+      phi::EmptyKernel<T, Context>(
           ctx,
           {output.dims()[0], output.dims()[2], output.dims()[1]},
           output.dtype(),
@@ -339,19 +397,19 @@ void MemoryEfficientAttentionBackwardKernel(
           phi::Multiply<float, Context>(ctx, output_grad_tmp, output_tmp);
 
       DenseTensor delta_sum;
-      phi::EmptyKernel<float, Context>(
+      phi::EmptyKernel<T, Context>(
           ctx,
           {delta_mul.dims()[0], delta_mul.dims()[1], delta_mul.dims()[2]},
           DataType::FLOAT32,
           &delta_sum);
-      phi::SumKernel<float, Context>(
+      phi::SumKernel<T, Context>(
           ctx, delta_mul, {-1}, delta_mul.dtype(), false, &delta_sum);
-      phi::EmptyKernel<float, Context>(
+      phi::EmptyKernel<T, Context>(
           ctx,
           {delta_mul.dims()[0], delta_mul.dims()[2], delta_mul.dims()[1]},
           DataType::FLOAT32,
           &delta);
-      phi::TransposeKernel<float, Context>(ctx, delta_sum, {0, 2, 1}, &delta);
+      phi::TransposeKernel<T, Context>(ctx, delta_sum, {0, 2, 1}, &delta);
     }
     VLOG(3) << "p.output" << output.dtype();
     VLOG(3) << "p.output_grad" << output_grad.dtype();
@@ -404,9 +462,9 @@ void MemoryEfficientAttentionBackwardKernel(
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
     p.output_ptr = SafeGetTensorPtr<scalar_t>(output);
     p.grad_output_ptr = SafeGetTensorPtr<scalar_t>(output_grad);
-    p.grad_query_ptr = SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
-    p.grad_key_ptr = SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
-    p.grad_value_ptr = SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
+    p.grad_query_ptr = SafeGetTensorPtr<scalar_t>(query_grad);
+    p.grad_key_ptr = SafeGetTensorPtr<scalar_t>(key_grad);
+    p.grad_value_ptr = SafeGetTensorPtr<scalar_t>(value_grad);
     p.delta_ptr = SafeGetTensorPtr<float>(delta);
     PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
     PD_MEA_CHECK_OVERFLOW(p.head_dim_value, v_dims[3]);
@@ -417,7 +475,7 @@ void MemoryEfficientAttentionBackwardKernel(
         p.num_batches,
         cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0]);
     PD_MEA_CHECK_OVERFLOW(p.num_heads, q_dims[2]);
-    p.causal = causal;
+    PD_MEA_CHECK_OVERFLOW(p.custom_mask_type, custom_mask_type);
 
     if (scale < 0) {
       p.scale = static_cast<float>(1.0 / std::sqrt(p.head_dim));
@@ -491,8 +549,10 @@ void MemoryEfficientAttentionBackwardKernel(
       PD_MEA_CHECK_OVERFLOW(p.bias_strideM, k_dims[1]);
       VLOG(3) << "p.bias_ptr" << p.bias_ptr;
       if (bias_grad) {
-        p.grad_bias_ptr = SafeAllocTensor<scalar_t, Context>(ctx, bias_grad);
-        PD_MEA_CHECK_OVERFLOW(p.gB_strideB, q_dims[2] * q_dims[1] * k_dims[1]);
+        p.grad_bias_ptr = SafeGetTensorPtr<output_t>(bias_grad);
+        PD_MEA_CHECK_OVERFLOW(
+            p.gB_strideB,
+            GetMemoryEfficientBiasStrideB(bias_grad->dims(), q_dims, k_dims));
         PD_MEA_CHECK_OVERFLOW(p.gB_strideH, q_dims[1] * k_dims[1]);
         PD_MEA_CHECK_OVERFLOW(p.gB_strideM, k_dims[1]);
         VLOG(3) << "p.grad_bias_ptr" << p.grad_bias_ptr;
@@ -503,7 +563,8 @@ void MemoryEfficientAttentionBackwardKernel(
       p.bias_ptr = nullptr;
       p.grad_bias_ptr = nullptr;
     }
-    if (dropout_p != 0) {
+
+    if (use_dropout) {
       int64_t* seed_and_offset_ptr = SafeGetTensorPtr<int64_t>(seed_and_offset);
       p.seed = (uint64_t)seed_and_offset_ptr[0];
       p.offset = (uint64_t)seed_and_offset_ptr[1];
@@ -511,6 +572,32 @@ void MemoryEfficientAttentionBackwardKernel(
       VLOG(3) << "seed_and_offset_ptr " << seed_and_offset_ptr;
       VLOG(3) << "p.seed " << p.seed << " " << p.offset;
       VLOG(3) << "p.dropout_prob " << p.dropout_prob;
+    }
+
+    // Heuristic for finding optimal number of splits
+    auto parallelism_without_split_key =
+        p.getBlocksGrid().x * p.getBlocksGrid().y * p.getBlocksGrid().z;
+    p.num_splits_key = cutlass::ceil_div(p.num_keys, KernelType::kBlockSizeJ);
+    p.num_splits_key =
+        std::max<int64_t>(p.num_splits_key, num_splits_key.to<int64_t>());
+    if (num_splits_key.to<int64_t>() <
+        1) {  // Skip heuristic, if user provided an explicit value
+      // If we already have enough parallelism, split-keys can help
+      // better use L2 cache.
+      // This is negligible when the seqlen is too small tho
+      if (parallelism_without_split_key >= 256 &&
+          p.num_keys <= 2 * KernelType::kBlockSizeJ) {
+        p.num_splits_key = 1;
+      }
+      // Increasing `split_keys` leads to using more gmem for temporary storage
+      // when we need a staging area for gK/gV. let's avoid that
+      if (KernelType::kNeedsAccumGradK || KernelType::kNeedsAccumGradV) {
+        p.num_splits_key = std::min(static_cast<int>(p.num_splits_key),
+                                    200 / (p.num_batches * p.num_heads));
+      }
+    }
+    if (!KernelType::kEnableSplitKeys || p.num_splits_key < 1) {
+      p.num_splits_key = 1;
     }
 
     int64_t size_bytes = p.workspace_size();
@@ -527,6 +614,8 @@ void MemoryEfficientAttentionBackwardKernel(
     }
     VLOG(3) << "temp_workspace has been set";
 
+    KernelType::check_supported(p);
+
     if (smem_bytes > 0xc000) {
       const void* kernel_fn_void_ptr =
           reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(kernel_fn));
@@ -535,7 +624,6 @@ void MemoryEfficientAttentionBackwardKernel(
                                cudaFuncAttributeMaxDynamicSharedMemorySize,
                                smem_bytes));
     }
-    KernelType::check_supported(p);
     VLOG(3) << "Kernel launched with func : " << typeid(kernel_fn).name()
             << " block dim " << p.getBlocksGrid() << " thread dim "
             << p.getThreadsGrid();

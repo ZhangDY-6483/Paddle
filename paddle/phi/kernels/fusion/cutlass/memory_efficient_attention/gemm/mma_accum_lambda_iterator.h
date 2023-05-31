@@ -92,7 +92,7 @@ struct AccumLambdaIteratorSm80 {
   template <typename DT, typename F>
   CUTLASS_DEVICE static bool reduceSameRow(int lane_id,
                                            DT& myValue,  // NOLINT
-                                           F fn) {       // NOLINT
+                                           F fn) {
     // In each warp, 4 threads will work on the same row
     // - the ones with the same `quad`
     auto otherV = __shfl_xor_sync(0xffffffff, myValue, 1);
@@ -153,7 +153,7 @@ struct AccumLambdaIteratorSm70 {
   template <typename DT, typename F>
   CUTLASS_DEVICE static bool reduceSameRow(int lane_id,
                                            DT& myValue,  // NOLINT
-                                           F fn) {       // NOLINT
+                                           F fn) {
     static_assert(cutlass::platform::is_same<Element, float>::value,
                   "update to support non-float accum");
     // https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#warp-level-matrix-fragment-mma-884-f16
@@ -232,7 +232,7 @@ struct AccumLambdaIteratorSimt {
   template <typename DT, typename F>
   CUTLASS_DEVICE static bool reduceSameRow(int lane_id,
                                            DT& myValue,  // NOLINT
-                                           F fn) {       // NOLINT
+                                           F fn) {
     CUTLASS_PRAGMA_UNROLL
     for (int bit = 1; bit < Policy::WarpShape::kColumn; bit *= 2) {
       auto otherV = __shfl_xor_sync(0xffffffff, myValue, bit);

@@ -223,6 +223,36 @@ class BlockDiagonalCausalMask(BlockDiagonalMask):
 
 
 @dataclass
+class BlockDiagonalCausalFromBottomRightMask(BlockDiagonalMask):
+    def __post_init__(self):
+        for i, ((q_start, q_end), (k_start, k_end)) in enumerate(
+            zip(
+                self.q_seqinfo.intervals(),
+                self.k_seqinfo.intervals(),
+            )
+        ):
+            num_queries = q_end - q_start
+            num_keys = k_end - k_start
+            if num_keys < num_queries:
+                raise ValueError(
+                    f"Block #{i} has num_keys={num_keys} and num_queries={num_queries}."
+                    " Expected `num_keys >= num_queries`"
+                )
+
+    def _create_block_mask(
+        self,
+        shape,
+        dtype=paddle.float32,
+    ):
+        create_as = dtype if dtype is not paddle.bfloat16 else paddle.float32
+        tensor = paddle.full(shape, dtype=create_as, fill_value=float("-inf"))
+        num_queries, num_keys = shape[-2:]
+        return paddle.triu(tensor, diagonal=num_keys - num_queries + 1).astype(
+            dtype
+        )
+
+
+@dataclass
 class BlockDiagonalCausalWithOffsetPaddedKeysMask(AttentionBias):
     q_seqinfo: SeqLenInfo
     k_seqinfo: PaddedSeqLenInfo

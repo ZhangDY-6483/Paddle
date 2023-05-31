@@ -305,10 +305,9 @@ class EpiloguePipelined : public EpilogueBase<Shape_,
     }
 
     CUTLASS_DEVICE
-    static void push(
-        size_t pos,
-        AccumulatorFragmentIterator const& iterator_begin,  // NOLINT
-        WarpTileIterator& warp_tile_iterator) {             // NOLINT
+    static void push(size_t pos,
+                     AccumulatorFragmentIterator const& iterator_begin,
+                     WarpTileIterator& warp_tile_iterator) {  // NOLINT
       int dummy[] = {(pos == (Seq * Base::kFragmentsPerIteration)) &&
                      (helper<Seq * Base::kFragmentsPerIteration>(
                           iterator_begin, warp_tile_iterator),
@@ -432,10 +431,9 @@ class EpiloguePipelined : public EpilogueBase<Shape_,
     }
 
     CUTLASS_DEVICE
-    static void push(
-        size_t pos,
-        AccumulatorFragmentIterator const& iterator_begin,  // NOLINT
-        WarpTileIterator& warp_tile_iterator) {             // NOLINT
+    static void push(size_t pos,
+                     AccumulatorFragmentIterator const& iterator_begin,
+                     WarpTileIterator& warp_tile_iterator) {  // NOLINT
       int dummy[] = {(pos == Seq) &&
                      (helper<Seq>(iterator_begin, warp_tile_iterator), 0)...};
     }

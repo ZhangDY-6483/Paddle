@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/multiary.h"
 
+#include <iostream>
 #include <vector>
 
 #include "glog/logging.h"
@@ -2234,13 +2235,15 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                                        const MetaTensor& seqlen_k,
                                        const Scalar& max_seqlen_q,
                                        const Scalar& max_seqlen_k,
-                                       const bool causal,
+                                       const Scalar& num_splits_key,
+                                       const int custom_mask_type,
                                        const double dropout_p,
                                        const float scale,
                                        const bool is_test,
                                        MetaTensor* output,
                                        MetaTensor* logsumexp,
                                        MetaTensor* seed_and_offset) {
+  std::cout << "run into multiary";
   PADDLE_ENFORCE_EQ(
       query.dims().size(),
       4,

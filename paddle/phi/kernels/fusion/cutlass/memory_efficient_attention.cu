@@ -34,32 +34,144 @@ void MemoryEfficientAttentionForwardKernel(
     const paddle::optional<DenseTensor>& cu_seqlens_k,
     const paddle::optional<DenseTensor>& causal_diagonal,
     const paddle::optional<DenseTensor>& seqlen_k,
-    const Scalar& max_seqlen_q,
-    const Scalar& max_seqlen_k,
-    const bool causal,
+    const Scalar& max_seqlen_q,  // backward
+    const Scalar& max_seqlen_k,  // backward
+    // how many parallel blocks across the keys dimension. Use `-1` to
+    // determine automatically
+    const Scalar& num_splits_key,  // backward
+    const int custom_mask_type,
     const double dropout_p,
     const float scale,
     const bool is_test,
     DenseTensor* output,
     DenseTensor* logsumexp,
     DenseTensor* seed_and_offset) {
+  VLOG(3) << "run into memory efficient c++";
+  const auto& k_dims = key.dims();
+  const auto& q_dims = query.dims();
+  const auto& v_dims = value.dims();
+
+  PADDLE_ENFORCE_EQ(
+      q_dims.size(),
+      4,
+      paddle::platform::errors::InvalidArgument("dim of query should be 4"));
+
+  PADDLE_ENFORCE_EQ(
+      k_dims.size(),
+      4,
+      paddle::platform::errors::InvalidArgument("dim of key should be 4"));
+
+  PADDLE_ENFORCE_EQ(
+      v_dims.size(),
+      4,
+      paddle::platform::errors::InvalidArgument("dim of value should be 4"));
+
+  // Batch sizes
+  PADDLE_ENFORCE_EQ(q_dims[0],
+                    k_dims[0],
+                    paddle::platform::errors::InvalidArgument(
+                        "the batch size of query must equal to key's"));
+
+  PADDLE_ENFORCE_EQ(q_dims[0],
+                    v_dims[0],
+                    paddle::platform::errors::InvalidArgument(
+                        "the batch size of query must equal to value's"));
+
+  // Sequence length
+  PADDLE_ENFORCE_EQ(k_dims[1],
+                    v_dims[1],
+                    paddle::platform::errors::InvalidArgument(
+                        "the sequence length of key must equal to value's"));
+
+  // Num heads
+  PADDLE_ENFORCE_EQ(q_dims[2],
+                    k_dims[2],
+                    paddle::platform::errors::InvalidArgument(
+                        "the num head of query must equal to key's"));
+
+  PADDLE_ENFORCE_EQ(q_dims[2],
+                    v_dims[2],
+                    paddle::platform::errors::InvalidArgument(
+                        "the num head of query must equal to value's"));
+
+  // Embedding per head
+  PADDLE_ENFORCE_EQ(q_dims[3],
+                    k_dims[3],
+                    paddle::platform::errors::InvalidArgument(
+                        "the embedding per head of query must equal to key's"));
+
+  int64_t max_seqlen_q_tmp, max_seqlen_k_tmp;
+  if (cu_seqlens_q) {
+    PADDLE_ENFORCE_EQ((cu_seqlens_q && cu_seqlens_k),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "cu_seqlens_q has value but cu_seqlens_k doesn't"));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        cu_seqlens_q || cu_seqlens_k,
+        false,
+        paddle::platform::errors::InvalidArgument(
+            "cu_seqlens_q doesn't have value but cu_seqlens_k has"));
+  }
+
+  if (cu_seqlens_q) {
+    PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dtype(),
+                      DataType::INT32,
+                      paddle::platform::errors::InvalidArgument(
+                          "data type of cu_seqlens_q should be INT32"));
+
+    PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dtype(),
+                      DataType::INT32,
+                      paddle::platform::errors::InvalidArgument(
+                          "data type of cu_seqlens_k should be INT32"));
+
+    PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dims().size(),
+                      1,
+                      paddle::platform::errors::InvalidArgument(
+                          "dim of cu_seqlens_q should be 1"));
+    PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dims().size(),
+                      1,
+                      paddle::platform::errors::InvalidArgument(
+                          "dim of cu_seqlens_k should be 1"));
+    PADDLE_ENFORCE_EQ(
+        cu_seqlens_q.get().dims()[0],
+        cu_seqlens_k.get().dims()[0],
+        paddle::platform::errors::InvalidArgument(
+            "the last dim of cu_seqlens_q and cu_seqlens_k should be equal"));
+    PADDLE_ENFORCE_EQ(q_dims[0],
+                      1,
+                      paddle::platform::errors::InvalidArgument(
+                          "cu_seqlen only supports batch_size=1"));
+    max_seqlen_q_tmp = max_seqlen_q.to<int64_t>();
+    max_seqlen_k_tmp = 0;  // Will be set inside the kernel
+  } else {
+    max_seqlen_q_tmp = q_dims[1];
+    max_seqlen_k_tmp = k_dims[1];
+  }
+
+  int64_t B = q_dims[0];
+  int64_t M = q_dims[1];
+  int64_t N = k_dims[1];
+  int64_t num_heads = q_dims[-2];
+  int64_t K = q_dims[-1];
+  int64_t Kv = v_dims[-1];
+
+  bool use_dropout = (dropout_p != 0);
+
   int compute_capacity = ctx.GetComputeCapability();
   const auto max_shmem =
       getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;
   bool kernel_launched = false;
 
-  auto max_seqlen_q_num = max_seqlen_q.to<uint64_t>();
-  auto max_seqlen_k_num = max_seqlen_k.to<uint64_t>();
-
   auto launchKernel = [&](auto k_, auto kernel_fn) {
     using KernelType = decltype(k_);
+    using scalar_t = typename KernelType::scalar_t;
+
     bool is_launched = kernel_launched;
     if (is_launched) {
       return;
     }
 
-    using scalar_t = typename KernelType::scalar_t;
-    bool use_dropout = (dropout_p != 0);
     if (!KernelType::kSupportsDropout && use_dropout) {
       VLOG(3) << "run in to use dropout" << use_dropout;
       return;
@@ -69,25 +181,12 @@ void MemoryEfficientAttentionForwardKernel(
       return;
     }
 
-    const auto& v_dims = value.dims();
     if (KernelType::kSingleValueIteration &&
         KernelType::kKeysPerBlock < v_dims[3]) {
       VLOG(3) << "run in to value dim" << v_dims;
       return;
     }
 
-    const auto& k_dims = key.dims();
-    const auto& q_dims = query.dims();
-
-    int64_t max_seqlen_q_tmp, max_seqlen_k_tmp;
-
-    if (cu_seqlens_q) {
-      max_seqlen_q_tmp = max_seqlen_q_num;
-      max_seqlen_k_tmp = 0;  // Will be set inside the kernel
-    } else {
-      max_seqlen_q_tmp = q_dims[1];
-      max_seqlen_k_tmp = k_dims[1];
-    }
     VLOG(3) << "max_seqlen_q_tmp " << max_seqlen_q_tmp;
 
     if ((q_dims[3] % KernelType::kAlignmentQ) ||
@@ -162,8 +261,12 @@ void MemoryEfficientAttentionForwardKernel(
     PD_MEA_CHECK_OVERFLOW(
         p.num_batches,
         cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0]);
-    p.causal = causal;
+    PD_MEA_CHECK_OVERFLOW(p.custom_mask_type, custom_mask_type);
     if (causal_diagonal) {
+      PADDLE_ENFORCE_EQ(causal_diagonal.get().dtype(),
+                        DataType::INT32,
+                        paddle::platform::errors::InvalidArgument(
+                            "data type of causal_diagonal should be INT32"));
       p.causal_diagonal_ptr = SafeGetTensorPtr<int32_t>(causal_diagonal);
     } else {
       p.causal_diagonal_ptr = nullptr;
@@ -172,6 +275,10 @@ void MemoryEfficientAttentionForwardKernel(
 
     p.seqlen_k_ptr = nullptr;
     if (seqlen_k) {
+      PADDLE_ENFORCE_EQ(seqlen_k.get().dtype(),
+                        DataType::INT32,
+                        paddle::platform::errors::InvalidArgument(
+                            "data type of seqlen_k should be INT32"));
       p.seqlen_k_ptr = SafeGetTensorPtr<int32_t>(seqlen_k);
     } else {
       p.seqlen_k_ptr = nullptr;
@@ -185,19 +292,24 @@ void MemoryEfficientAttentionForwardKernel(
     }
     VLOG(3) << "scale " << p.scale;
 
-    PD_MEA_CHECK_OVERFLOW(p.q_strideB, DimStride(query.dims(), 0));
-    PD_MEA_CHECK_OVERFLOW(p.k_strideB, DimStride(key.dims(), 0));
-    PD_MEA_CHECK_OVERFLOW(p.v_strideB, DimStride(value.dims(), 0));
-    PD_MEA_CHECK_OVERFLOW(p.q_strideM, DimStride(query.dims(), 1));
-    PD_MEA_CHECK_OVERFLOW(p.k_strideM, DimStride(key.dims(), 1));
-    PD_MEA_CHECK_OVERFLOW(p.v_strideM, DimStride(value.dims(), 1));
-    PD_MEA_CHECK_OVERFLOW(p.q_strideH, DimStride(query.dims(), 2));
-    PD_MEA_CHECK_OVERFLOW(p.k_strideH, DimStride(key.dims(), 2));
-    PD_MEA_CHECK_OVERFLOW(p.v_strideH, DimStride(value.dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.q_strideB, DimStride(q_dims, 0));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideB, DimStride(k_dims, 0));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideB, DimStride(v_dims, 0));
+    PD_MEA_CHECK_OVERFLOW(p.q_strideM, DimStride(q_dims, 1));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideM, DimStride(k_dims, 1));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideM, DimStride(v_dims, 1));
+    PD_MEA_CHECK_OVERFLOW(p.q_strideH, DimStride(q_dims, 2));
+    PD_MEA_CHECK_OVERFLOW(p.k_strideH, DimStride(k_dims, 2));
+    PD_MEA_CHECK_OVERFLOW(p.v_strideH, DimStride(v_dims, 2));
     PD_MEA_CHECK_OVERFLOW(p.o_strideM, DimStride(output->dims(), 1));
 
     if (bias) {
       p.attn_bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
+      PADDLE_ENFORCE_EQ(
+          bias.get().dtype(),
+          query.dtype(),
+          paddle::platform::errors::InvalidArgument(
+              "invalid dtype for bias - should match query's dtype"));
       PD_MEA_CHECK_OVERFLOW(
           p.bias_strideB,
           GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims));
@@ -218,7 +330,7 @@ void MemoryEfficientAttentionForwardKernel(
     int64_t* seed_and_offset_ptr = SafeGetTensorPtr<int64_t>(seed_and_offset);
 
     auto gen = ctx.GetGenerator();
-    uint64_t inc = query.dims()[0] * query.dims()[2] * 32;
+    uint64_t inc = q_dims[0] * q_dims[2] * 32;
     auto seed_offset_pair = gen->IncrementOffset(inc);
     auto seed = (seed_offset_pair.first);
     auto offset = (seed_offset_pair.second);

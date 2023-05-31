@@ -25,6 +25,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 from .attn_bias import (
+    BlockDiagonalCausalFromBottomRightMask,
     BlockDiagonalCausalMask,
     BlockDiagonalCausalWithOffsetPaddedKeysMask,
     BlockDiagonalMask,
@@ -39,6 +40,7 @@ SUPPORTED_ATTN_BIAS_TYPES = {
     LowerTriangularMaskWithTensorBias,
     BlockDiagonalMask,
     BlockDiagonalCausalMask,
+    BlockDiagonalCausalFromBottomRightMask,
     BlockDiagonalCausalWithOffsetPaddedKeysMask,
 }
 
@@ -67,18 +69,26 @@ def _get_tensor_bias(attn_bias):
         return None
 
 
-def memory_efficient_attention(
-    query, key, value, attn_bias=None, p=0.0, scale=None, training=True
-):
-    assert type(attn_bias) in SUPPORTED_ATTN_BIAS_TYPES
-    causal = isinstance(
-        attn_bias,
+def _custom_mask_type(bias):
+    if isinstance(
+        bias,
         (
             LowerTriangularMask,
             BlockDiagonalCausalMask,
             BlockDiagonalCausalWithOffsetPaddedKeysMask,
         ),
-    )
+    ):
+        return 1
+    if isinstance(bias, BlockDiagonalCausalFromBottomRightMask):
+        return 2
+    return 0
+
+
+def memory_efficient_attention(
+    query, key, value, attn_bias=None, p=0.0, scale=None, training=True
+):
+    assert type(attn_bias) in SUPPORTED_ATTN_BIAS_TYPES
+
     seqstart_k, seqstart_q, max_seqlen_q, max_seqlen_k = _get_seqlen_info(
         attn_bias
     )
@@ -101,27 +111,28 @@ def memory_efficient_attention(
 
     if in_dynamic_mode():
         output, logsumexp, seed_and_offset = _C_ops.memory_efficient_attention(
-            query,
-            key,
-            value,
-            bias,
-            seqstart_q,
-            seqstart_k,
-            causal_diagonal,
-            seqlen_k,
-            max_seqlen_q,
-            max_seqlen_k,
-            causal,
-            p,
-            scale,
-            is_test,
+            query=query,
+            key=key,
+            value=value,
+            bias=bias,
+            cu_seqlens_q=seqstart_q,
+            cu_seqlens_k=seqstart_k,
+            causal_diagonal=causal_diagonal,
+            seqlen_k=seqlen_k,
+            max_seqlen_q=max_seqlen_q,
+            max_seqlen_k=max_seqlen_k,
+            num_splits_key=-1,
+            custom_mask_type=_custom_mask_type(attn_bias),
+            dropout_p=p,
+            scale=scale,
+            is_test=is_test,
         )
         return output
 
     helper = LayerHelper('memory_efficient_attention', **locals())
     output = helper.create_variable_for_type_inference(dtype=query.dtype)
     logsumexp = helper.create_variable_for_type_inference(dtype='float')
-    seed_and_offset = helper.create_variable_for_type_inference(dtype='int32')
+    seed_and_offset = helper.create_variable_for_type_inference(dtype='int64_t')
     helper.append_op(
         type='memory_efficient_attention',
         inputs={
@@ -137,7 +148,8 @@ def memory_efficient_attention(
         attrs={
             "max_seqlen_q": max_seqlen_q,
             "max_seqlen_k": max_seqlen_k,
-            "causal": causal,
+            "custom_mask_type": _custom_mask_type(attn_bias),
+            "num_splits_key": -1,
             "dropout_p": p,
             "scale": scale,
             "is_test": is_test,
