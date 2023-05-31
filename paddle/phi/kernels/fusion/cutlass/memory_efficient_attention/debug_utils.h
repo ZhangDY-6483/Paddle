@@ -134,8 +134,9 @@ constexpr __string_view __get_type_name() {
     PRINT_B0_T0("printing %s (%s)", name, typeStr.data);      \
     for (int _start = 0; _start < frag.size(); _start += 8) { \
       PRINT_ACCUM8_T0_L0_START("  ", frag, _start);           \
-    }  //   __syncthreads(); NANCHECK(frag);
-}
+    }                                                         \
+  }  //  __syncthreads(); NANCHECK(frag);
+
 #define PRINT_ARRAY_T0_L0_INCR(name, array, length, incr)                \
   {                                                                      \
     PRINT_B0_T0("printing %s (len=%d)", name, static_cast<int>(length)); \
